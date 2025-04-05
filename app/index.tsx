@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { SetStateAction, useEffect, useState } from 'react';
+import { SetStateAction, useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 export default function Home() {
@@ -13,6 +13,12 @@ export default function Home() {
   const [directionToPoint, setDirectionToPoint] = useState<string | null>(null);
   const [closestPointIndex, setClosestPointIndex] = useState<number | null>(null);
   const [collectedPoints, setCollectedPoints] = useState<number>(0);
+  const [isPlayable, setIsPlayable] = useState<boolean>(true);
+  const poorAccuracyTimestamp = useRef<number | null>(null);
+  const [collectingPoint, setCollectingPoint] = useState<boolean>(false);
+  const [collectingProgress, setCollectingProgress] = useState<number>(0);
+  const collectingStartTime = useRef<number | null>(null);
+  const currentCollectingPointIndex = useRef<number | null>(null);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -78,120 +84,210 @@ export default function Home() {
         });
         const newCoords = newLocation.coords;
         setLocation(newCoords);
-        setAccuracy(newCoords.accuracy);
+
+        // Handle accuracy tracking with time threshold
+        const currentAccuracy = newCoords.accuracy || 0;
+        setAccuracy(currentAccuracy);
+
+        const now = Date.now();
+        if (currentAccuracy > 10) {
+          // Poor accuracy detected
+          if (poorAccuracyTimestamp.current === null) {
+            // Start tracking poor accuracy time
+            poorAccuracyTimestamp.current = now;
+          } else if (now - poorAccuracyTimestamp.current >= 5000) {
+            // Poor accuracy for more than 5 seconds
+            setIsPlayable(false);
+          }
+        } else {
+          // Good accuracy, reset the tracking
+          poorAccuracyTimestamp.current = null;
+          setIsPlayable(true);
+        }
+
         console.log(newCoords);
 
-        // Check if the user is at any of the edge points
-        let minDistance = Infinity;
-        let nearestPointIndex = -1;
-        let nearestPointCoords = { lat: 0, lon: 0 };
-        let foundPointIndex = -1;
+        // Only process location if the game is playable
+        if (isPlayable) {
+          // Check if the user is at any of the edge points
+          let minDistance = Infinity;
+          let nearestPointIndex = -1;
+          let nearestPointCoords = { lat: 0, lon: 0 };
+          let foundPointIndex = -1;
 
-        const atPoint = points.find((point, index) => {
-          const [latStr, lonStr] = point
-            .replace('Latitude: ', '')
-            .replace('Longitude: ', '')
-            .split(', ');
-          const lat = parseFloat(latStr);
-          const lon = parseFloat(lonStr);
+          const atPoint = points.find((point, index) => {
+            const [latStr, lonStr] = point
+              .replace('Latitude: ', '')
+              .replace('Longitude: ', '')
+              .split(', ');
+            const lat = parseFloat(latStr);
+            const lon = parseFloat(lonStr);
 
-          // Calculate the distance
-          const distance =
-            Math.sqrt(
-              Math.pow(lat - newCoords.latitude, 2) + Math.pow(lon - newCoords.longitude, 2)
-            ) *
-            (Math.PI / 180) *
-            earthRadius;
+            // Calculate the distance
+            const distance =
+              Math.sqrt(
+                Math.pow(lat - newCoords.latitude, 2) + Math.pow(lon - newCoords.longitude, 2)
+              ) *
+              (Math.PI / 180) *
+              earthRadius;
 
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestPointIndex = index;
-            nearestPointCoords = { lat, lon };
-          }
+            if (distance < minDistance) {
+              minDistance = distance;
+              nearestPointIndex = index;
+              nearestPointCoords = { lat, lon };
+            }
 
-          // Use a larger threshold based on GPS accuracy
-          // At least 3 meters or the current accuracy, whichever is larger
-          const proximityThreshold = Math.max(3, newCoords.accuracy || 3);
-          const isAtPoint = distance <= proximityThreshold;
+            // Use a larger threshold based on GPS accuracy
+            // At least 3 meters or the current accuracy, whichever is larger
+            const proximityThreshold = Math.max(3, newCoords.accuracy || 3);
+            const isAtPoint = distance <= proximityThreshold;
 
-          if (isAtPoint) {
-            foundPointIndex = index;
-          }
+            if (isAtPoint) {
+              foundPointIndex = index;
+            }
 
-          return isAtPoint;
-        });
+            return isAtPoint;
+          });
 
-        setClosestDistance(minDistance);
-        setClosestPointIndex(nearestPointIndex);
+          setClosestDistance(minDistance);
+          setClosestPointIndex(nearestPointIndex);
 
-        if (atPoint) {
-          setAtPointMessage('Point collected!');
-          setDirectionToPoint(null);
-          setCollectedPoints((prev) => prev + 1);
+          const now = Date.now();
 
-          // Remove the point from the array
-          if (foundPointIndex !== -1) {
-            const newPoints = [...points];
-            newPoints.splice(foundPointIndex, 1);
-            setEdgePoints(newPoints);
-          }
+          if (atPoint) {
+            // User is at a point
+            if (!collectingPoint) {
+              // Start collecting the point
+              setCollectingPoint(true);
+              collectingStartTime.current = now;
+              currentCollectingPointIndex.current = foundPointIndex;
+              setCollectingProgress(0);
+            } else if (
+              foundPointIndex === currentCollectingPointIndex.current &&
+              collectingStartTime.current
+            ) {
+              // Continue collecting the same point
+              const elapsedTime = now - collectingStartTime.current;
+              const progress = Math.min(100, (elapsedTime / 5000) * 100);
+              setCollectingProgress(progress);
 
-          // Clear the message after 3 seconds
-          setTimeout(() => {
-            setAtPointMessage(null);
-          }, 3000);
-        } else if (nearestPointIndex !== -1) {
-          // Calculate bearing to the nearest point
-          const dLon = nearestPointCoords.lon - newCoords.longitude;
-          const y = Math.sin(dLon) * Math.cos(nearestPointCoords.lat);
-          const x =
-            Math.cos(newCoords.latitude) * Math.sin(nearestPointCoords.lat) -
-            Math.sin(newCoords.latitude) * Math.cos(nearestPointCoords.lat) * Math.cos(dLon);
-          let bearing = (Math.atan2(y, x) * 180) / Math.PI;
-          bearing = (bearing + 360) % 360; // Normalize to 0-360
+              // Check if we've reached 5 seconds
+              if (elapsedTime >= 5000) {
+                // Point collection complete
+                setAtPointMessage('Point collected!');
+                setDirectionToPoint(null);
+                setCollectedPoints((prev) => prev + 1);
+                setCollectingPoint(false);
+                setCollectingProgress(0);
+                collectingStartTime.current = null;
+                currentCollectingPointIndex.current = null;
 
-          // Get user-friendly direction
-          let direction = '';
-          if (heading !== null) {
-            const relativeBearing = (bearing - heading + 360) % 360;
+                // Remove the point from the array
+                if (foundPointIndex !== -1) {
+                  const newPoints = [...points];
+                  newPoints.splice(foundPointIndex, 1);
+                  setEdgePoints(newPoints);
+                }
 
-            if (relativeBearing > 337.5 || relativeBearing <= 22.5) {
-              direction = 'FORWARD';
-            } else if (relativeBearing > 22.5 && relativeBearing <= 67.5) {
-              direction = 'FORWARD + RIGHT';
-            } else if (relativeBearing > 67.5 && relativeBearing <= 112.5) {
-              direction = 'RIGHT';
-            } else if (relativeBearing > 112.5 && relativeBearing <= 157.5) {
-              direction = 'BACK + RIGHT';
-            } else if (relativeBearing > 157.5 && relativeBearing <= 202.5) {
-              direction = 'BACK';
-            } else if (relativeBearing > 202.5 && relativeBearing <= 247.5) {
-              direction = 'BACK + LEFT';
-            } else if (relativeBearing > 247.5 && relativeBearing <= 292.5) {
-              direction = 'LEFT';
+                // Clear the message after 3 seconds
+                setTimeout(() => {
+                  setAtPointMessage(null);
+                }, 3000);
+              }
             } else {
-              direction = 'FORWARD + LEFT';
+              // User moved to a different point, reset collection
+              collectingStartTime.current = now;
+              currentCollectingPointIndex.current = foundPointIndex;
+              setCollectingProgress(0);
             }
           } else {
-            // Fallback if no heading is available
-            direction = `${Math.round(bearing)}° (N=0°, E=90°)`;
-          }
+            // User is not at any point, reset collection
+            if (collectingPoint) {
+              setCollectingPoint(false);
+              setCollectingProgress(0);
+              collectingStartTime.current = null;
+              currentCollectingPointIndex.current = null;
+            }
 
-          setDirectionToPoint(`${direction} (${minDistance.toFixed(2)}m)`);
+            if (nearestPointIndex !== -1) {
+              // Show direction to nearest point
+              // Calculate bearing to the nearest point
+              const dLon = nearestPointCoords.lon - newCoords.longitude;
+              const y = Math.sin(dLon) * Math.cos(nearestPointCoords.lat);
+              const x =
+                Math.cos(newCoords.latitude) * Math.sin(nearestPointCoords.lat) -
+                Math.sin(newCoords.latitude) * Math.cos(nearestPointCoords.lat) * Math.cos(dLon);
+              let bearing = (Math.atan2(y, x) * 180) / Math.PI;
+              bearing = (bearing + 360) % 360; // Normalize to 0-360
+
+              // Get user-friendly direction
+              let direction = '';
+              if (heading !== null) {
+                const relativeBearing = (bearing - heading + 360) % 360;
+
+                if (relativeBearing > 337.5 || relativeBearing <= 22.5) {
+                  direction = 'FORWARD';
+                } else if (relativeBearing > 22.5 && relativeBearing <= 67.5) {
+                  direction = 'FORWARD + RIGHT';
+                } else if (relativeBearing > 67.5 && relativeBearing <= 112.5) {
+                  direction = 'RIGHT';
+                } else if (relativeBearing > 112.5 && relativeBearing <= 157.5) {
+                  direction = 'BACK + RIGHT';
+                } else if (relativeBearing > 157.5 && relativeBearing <= 202.5) {
+                  direction = 'BACK';
+                } else if (relativeBearing > 202.5 && relativeBearing <= 247.5) {
+                  direction = 'BACK + LEFT';
+                } else if (relativeBearing > 247.5 && relativeBearing <= 292.5) {
+                  direction = 'LEFT';
+                } else {
+                  direction = 'FORWARD + LEFT';
+                }
+              } else {
+                // Fallback if no heading is available
+                direction = `${Math.round(bearing)}° (N=0°, E=90°)`;
+              }
+
+              setDirectionToPoint(`${direction} (${minDistance.toFixed(2)}m)`);
+            }
+          }
         }
-      }, 2000);
+      }, 500); // More frequent updates for smoother progress tracking
     })();
 
     return () => {
       if (intervalId) clearInterval(intervalId);
       if (headingSubscription) headingSubscription.remove();
     };
-  }, []);
+  }, [isPlayable]);
+
+  // if (!isPlayable && accuracy !== null) {
+  //   return (
+  //     <View style={styles.container}>
+  //       <Text style={styles.errorText}>GPS accuracy is too low (±{accuracy.toFixed(1)}m).</Text>
+  //       <Text style={styles.instructionText}>
+  //         Please go outside or to an open area to improve GPS reception.
+  //       </Text>
+  //       <Text style={styles.instructionText}>
+  //         The game will resume automatically when accuracy improves.
+  //       </Text>
+  //     </View>
+  //   );
+  // }
+
+  // if (accuracy > 10) {
+  //   return (
+  //     <View style={styles.container}>
+  //       <Text style={styles.successText}>
+  //         GPS accuracy is too low. Please go outside to improve accuracy and play the game!
+  //       </Text>
+  //     </View>
+  //   );
+  // }
 
   return (
     <View style={styles.container}>
       {errorMsg ? (
-        <Text>{errorMsg}</Text>
+        <Text style={styles.errorText}>{errorMsg}</Text>
       ) : (
         <>
           <Text style={styles.headerText}>
@@ -215,7 +311,18 @@ export default function Home() {
             </Text>
           )}
 
-          {directionToPoint && <Text style={styles.directionText}>{directionToPoint}</Text>}
+          {collectingPoint && (
+            <View style={styles.progressContainer}>
+              <View style={[styles.progressBar, { width: `${collectingProgress}%` }]} />
+              <Text style={styles.progressText}>
+                Collecting point... {Math.round(collectingProgress)}%
+              </Text>
+            </View>
+          )}
+
+          {directionToPoint && !collectingPoint && (
+            <Text style={styles.directionText}>{directionToPoint}</Text>
+          )}
 
           {atPointMessage && <Text style={styles.successText}>{atPointMessage}</Text>}
 
@@ -293,5 +400,44 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     color: 'green',
+  },
+  errorText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'red',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  instructionText: {
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  progressContainer: {
+    height: 40,
+    width: '100%',
+    backgroundColor: '#e0e0e0',
+    borderRadius: 20,
+    marginVertical: 15,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 20,
+  },
+  progressText: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000',
+    padding: 10,
   },
 });
