@@ -377,7 +377,7 @@ export default function Home() {
 
     return () => {
       if (intervalId) clearInterval(intervalId);
-      if (headingSubscription) headingSubscription.remove();
+      if (headingSubscription) headingSubscription.remove;
     };
   }, [isPlayable]);
 
