@@ -1,17 +1,16 @@
-import * as Location from 'expo-location';
-
-import { useEffect, useState, useRef } from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
-import { MapPin, Target } from 'lucide-react-native';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import {
   faChessQueen,
   faChessRook,
   faChessBishop,
   faChessKnight,
-  faChessPawn,
   faQuestion,
 } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import * as Location from 'expo-location';
+import { Link } from 'expo-router';
+import { MapPin, Target } from 'lucide-react-native';
+import { useEffect, useState, useRef } from 'react';
+import { View, Text, SafeAreaView } from 'react-native';
 
 type ChessPiece = {
   name: string;
@@ -41,7 +40,6 @@ export default function Home() {
   const [heading, setHeading] = useState<number | null>(null);
   const [directionToPoint, setDirectionToPoint] = useState<string | null>(null);
   const [closestPointIndex, setClosestPointIndex] = useState<number | null>(null);
-  const [closestDistance, setClosestDistance] = useState<number | null>(null);
   const [collectedPieces, setCollectedPieces] = useState<ChessPiece[]>([]);
   const [isPlayable, setIsPlayable] = useState<boolean>(true);
   const poorAccuracyTimestamp = useRef<number | null>(null);
@@ -162,7 +160,6 @@ export default function Home() {
               foundPointIndex = index;
             }
           });
-          setClosestDistance(minDistance);
           setClosestPointIndex(nearestPointIndex);
 
           const now = Date.now();
@@ -398,6 +395,7 @@ export default function Home() {
     <SafeAreaView className="h-screen w-screen bg-violet-700/40">
       <View className="flex h-screen w-screen flex-col items-center justify-center gap-4 p-5">
         <View className="flex w-full items-center justify-center gap-2">
+          <Link href="/chess">Abcz</Link>
           <Text className="mb-2.5 font-bricolage-bold text-3xl text-violet-600">Chess Quest</Text>
 
           <View className="flex flex-row gap-2">
