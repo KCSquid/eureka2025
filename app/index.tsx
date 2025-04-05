@@ -189,7 +189,7 @@ export default function Home() {
             const distance =
               Math.sqrt(
                 Math.pow((point.lat ?? 0) - newCoords.latitude, 2) +
-                  Math.pow((point.lon ?? 0) - newCoords.longitude, 2)
+                Math.pow((point.lon ?? 0) - newCoords.longitude, 2)
               ) *
               (Math.PI / 180) *
               earthRadius;
@@ -216,7 +216,7 @@ export default function Home() {
             const foundPointDistance =
               Math.sqrt(
                 Math.pow((points[foundPointIndex].lat ?? 0) - newCoords.latitude, 2) +
-                  Math.pow((points[foundPointIndex].lon ?? 0) - newCoords.longitude, 2)
+                Math.pow((points[foundPointIndex].lon ?? 0) - newCoords.longitude, 2)
               ) *
               (Math.PI / 180) *
               earthRadius;
@@ -420,8 +420,8 @@ export default function Home() {
           }
         }
 
-            setIsOnGrass(true);
-            return;
+        setIsOnGrass(true);
+        return;
         try {
           const response = await axios.get<{
             type?: string;
@@ -462,6 +462,7 @@ export default function Home() {
           router.push('/chess');
           return 0;
         }
+        // if (!location) return prev
         return prev - 1;
       });
     }, 1000);
