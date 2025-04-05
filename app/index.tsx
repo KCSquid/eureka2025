@@ -11,6 +11,8 @@ import { Link } from 'expo-router';
 import { MapPin, Target } from 'lucide-react-native';
 import { useEffect, useState, useRef } from 'react';
 import { View, Text, SafeAreaView } from 'react-native';
+import { io } from 'socket.io-client';
+import axios from 'axios';
 
 type ChessPiece = {
   name: string;
@@ -47,6 +49,35 @@ export default function Home() {
   const [collectingProgress, setCollectingProgress] = useState<number>(0);
   const collectingStartTime = useRef<number | null>(null);
   const currentCollectingPointIndex = useRef<number | null>(null);
+
+  const [playersConnected, setPlayersConnected] = useState<number>(0);
+  const socket = useRef<any>(null);
+  const [isOnGrass, setIsOnGrass] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Initialize WebSocket connection
+    socket.current = io('http://192.168.80.86:3000'); // Replace with your server URL
+
+    socket.current.on('connect', () => {
+      console.log('Connected to WebSocket server');
+    });
+
+    socket.current.on('updatePlayers', (data: { playersConnected: number }) => {
+      setPlayersConnected(data.playersConnected);
+    });
+
+    return () => {
+      if (socket.current) {
+        socket.current.disconnect();
+      }
+    };
+  }, []);
+
+  const joinGame = (gameId: string) => {
+    if (socket.current) {
+      socket.current.emit('joinGame', gameId);
+    }
+  };
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -372,7 +403,23 @@ export default function Home() {
             }
           }
         }
-      }, 500);
+
+        try {
+          const response = await axios.get(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newCoords.latitude}&lon=${newCoords.longitude}`
+          );
+
+            const landType = response.data.type;
+            if (landType && (landType.includes('grass') || landType.includes('park') || landType.includes('school'))) {
+            setIsOnGrass(true);
+            } else {
+            setIsOnGrass(false);
+            }
+        } catch (error) {
+          console.error('Error fetching land type:', error);
+          setIsOnGrass(null);
+        }
+      }, 5000);
     })();
 
     return () => {
@@ -394,9 +441,10 @@ export default function Home() {
   return (
     <SafeAreaView className="h-screen w-screen bg-violet-700/40">
       <View className="flex h-screen w-screen flex-col items-center justify-center gap-4 p-5">
+        <Text className="mb-2.5 font-bricolage-bold text-3xl text-violet-600">Chess Quest</Text>
+        {/* <Text className="font-inter-bold text-lg">Players Connected: {playersConnected}/2</Text> */}
         <View className="flex w-full items-center justify-center gap-2">
-          <Link href="/chess">Abcz</Link>
-          <Text className="mb-2.5 font-bricolage-bold text-3xl text-violet-600">Chess Quest</Text>
+          <Link href="/chess">Chess</Link>
 
           <View className="flex flex-row gap-2">
             <View className="flex flex-row items-center justify-center gap-2 rounded-lg bg-violet-200 p-2">
@@ -483,6 +531,24 @@ export default function Home() {
         {atPointMessage && (
           <Text className="my-4 font-bricolage-bold text-2xl text-violet-600">
             {atPointMessage}
+          </Text>
+        )}
+
+        {isOnGrass === false && (
+          <Text className="mt-4 font-bricolage-bold text-2xl text-red-600">
+            Go to a grassy area!
+          </Text>
+        )}
+
+        {isOnGrass === true && (
+          <Text className="mt-4 font-bricolage-bold text-2xl text-green-600">
+            You are on grass!
+          </Text>
+        )}
+
+        {isOnGrass === null && (
+          <Text className="mt-4 font-bricolage-bold text-2xl text-yellow-600">
+            Checking land type...
           </Text>
         )}
 
