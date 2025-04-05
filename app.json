@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "chessquest",
-    "slug": "chessquest",
+    "name": "cqv2",
+    "slug": "cqv2",
     "version": "1.0.0",
 
-    "scheme": "chessquest",
+    "scheme": "cqv2",
     "web": {
       "bundler": "metro",
       "output": "static",

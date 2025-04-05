@@ -1,6 +1,7 @@
 import * as Location from 'expo-location';
+import React from 'react';
 import { SetStateAction, useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 
 export default function Home() {
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null);
@@ -285,62 +286,68 @@ export default function Home() {
   // }
 
   return (
-    <View style={styles.container}>
+    <View className="p-5">
       {errorMsg ? (
-        <Text style={styles.errorText}>{errorMsg}</Text>
+        <Text className="mb-4 text-center text-lg font-bold text-red-600">{errorMsg}</Text>
       ) : (
         <>
-          <Text style={styles.headerText}>
+          <Text className="mb-2.5 text-base font-bold">
             {location
               ? `Current Location: Latitude: ${location.latitude.toFixed(6)}, Longitude: ${location.longitude.toFixed(6)}`
               : 'Fetching location...'}
           </Text>
 
           {accuracy !== null && (
-            <Text style={styles.accuracyText}>
+            <Text className="mb-2.5 text-base font-bold text-gray-600">
               GPS Accuracy: ±{accuracy.toFixed(1)}m{' '}
               {accuracy < 5 ? '(Good)' : accuracy < 10 ? '(Fair)' : '(Poor)'}
             </Text>
           )}
 
-          <Text style={styles.scoreText}>Points Collected: {collectedPoints}</Text>
+          <Text className="mb-2.5 text-lg font-bold text-green-700">
+            Points Collected: {collectedPoints}
+          </Text>
 
           {heading !== null && (
-            <Text style={styles.headerText}>
+            <Text className="mb-2.5 text-base">
               Heading: {Math.round(heading)}° {getCardinalDirection(heading)}
             </Text>
           )}
 
           {collectingPoint && (
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressBar, { width: `${collectingProgress}%` }]} />
-              <Text style={styles.progressText}>
+            <View className="relative my-4 h-10 w-full overflow-hidden rounded-3xl bg-gray-300">
+              <View
+                className="h-full rounded-3xl bg-green-500"
+                style={{ width: `${collectingProgress}%` }}
+              />
+              <Text className="absolute inset-0 py-2.5 text-center text-base font-bold text-black">
                 Collecting point... {Math.round(collectingProgress)}%
               </Text>
             </View>
           )}
 
           {directionToPoint && !collectingPoint && (
-            <Text style={styles.directionText}>{directionToPoint}</Text>
+            <Text className="my-4 text-2xl font-bold text-blue-700">{directionToPoint}</Text>
           )}
 
-          {atPointMessage && <Text style={styles.successText}>{atPointMessage}</Text>}
+          {atPointMessage && (
+            <Text className="my-4 text-2xl font-bold text-green-700">{atPointMessage}</Text>
+          )}
 
-          <Text style={styles.sectionTitle}>Remaining Points: {edgePoints.length}</Text>
+          <Text className="mb-1 mt-4 text-lg font-bold">Remaining Points: {edgePoints.length}</Text>
 
           {edgePoints.length > 0 ? (
             edgePoints.map((point, index) => (
               <Text
                 key={index}
-                style={[
-                  styles.pointText,
-                  closestPointIndex === index ? styles.highlightedPoint : null,
-                ]}>
+                className={`my-0.5 text-sm ${closestPointIndex === index ? 'font-bold text-blue-700' : ''}`}>
                 Point {index + 1}: {point}
               </Text>
             ))
           ) : (
-            <Text style={styles.successText}>All points collected! Well done!</Text>
+            <Text className="my-4 text-2xl font-bold text-green-700">
+              All points collected! Well done!
+            </Text>
           )}
         </>
       )}
@@ -355,89 +362,4 @@ function getCardinalDirection(angle: number): string {
   return directions[index];
 }
 
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-  },
-  headerText: {
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  accuracyText: {
-    fontSize: 16,
-    marginBottom: 10,
-    fontWeight: 'bold',
-    color: '#777',
-  },
-  directionText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginVertical: 15,
-    color: '#0066cc',
-  },
-  successText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginVertical: 15,
-    color: 'green',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 15,
-    marginBottom: 5,
-  },
-  pointText: {
-    fontSize: 14,
-    marginVertical: 2,
-  },
-  highlightedPoint: {
-    fontWeight: 'bold',
-    color: '#0066cc',
-  },
-  scoreText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: 'green',
-  },
-  errorText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'red',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  instructionText: {
-    fontSize: 16,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  progressContainer: {
-    height: 40,
-    width: '100%',
-    backgroundColor: '#e0e0e0',
-    borderRadius: 20,
-    marginVertical: 15,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: 20,
-  },
-  progressText: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-    padding: 10,
-  },
-});
+// StyleSheet has been removed and replaced with Tailwind classes

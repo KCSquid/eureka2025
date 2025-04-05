@@ -1,6 +1,6 @@
 {
   "cesVersion": "2.14.3",
-  "projectName": "chessquest",
+  "projectName": "cqv2",
   "packages": [
     {
       "name": "expo-router",
