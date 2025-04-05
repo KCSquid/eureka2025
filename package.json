@@ -21,6 +21,7 @@
     "@fortawesome/react-native-fontawesome": "^0.3.2",
     "@react-navigation/native": "^7.0.3",
     "axios": "^1.8.4",
+    "axios-retry": "^4.5.0",
     "axois": "^0.0.1-security",
     "chess.js": "^1.1.0",
     "cors": "^2.8.5",

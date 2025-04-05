@@ -7,12 +7,26 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import * as Location from 'expo-location';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { MapPin, Target } from 'lucide-react-native';
 import { useEffect, useState, useRef } from 'react';
 import { View, Text, SafeAreaView } from 'react-native';
 import { io } from 'socket.io-client';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
+
+// Configure Axios to retry failed requests
+axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
+
+// Refined custom type guard for AxiosError
+function isAxiosError(error: unknown): error is { isAxiosError: boolean; message: string; response?: any } {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'isAxiosError' in error &&
+    'message' in error
+  );
+}
 
 type ChessPiece = {
   name: string;
@@ -31,6 +45,8 @@ const chessPieces: ChessPiece[] = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const [timer, setTimer] = useState<number>(120);
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [edgePoints, setEdgePoints] = useState<{ piece: ChessPiece; lat: number; lon: number }[]>(
@@ -404,22 +420,32 @@ export default function Home() {
           }
         }
 
+            setIsOnGrass(true);
+            return;
         try {
-          const response = await axios.get(
+          const response = await axios.get<{
+            type?: string;
+          }>(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newCoords.latitude}&lon=${newCoords.longitude}`
           );
 
-            const landType = response.data.type;
-            if (landType && (landType.includes('grass') || landType.includes('park') || landType.includes('school'))) {
+          console.log(response);
+
+          const landType = response.data?.type;
+          if (landType && (landType.includes('grass') || landType.includes('park') || landType.includes('school'))) {
             setIsOnGrass(true);
-            } else {
+          } else {
             setIsOnGrass(false);
-            }
+          }
         } catch (error) {
-          console.error('Error fetching land type:', error);
+          if (isAxiosError(error)) {
+            console.error('Axios error fetching land type:', error.message, error.response?.data);
+          } else {
+            console.error('Unexpected error fetching land type:', error);
+          }
           setIsOnGrass(null);
         }
-      }, 5000);
+      }, 2000);
     })();
 
     return () => {
@@ -427,6 +453,21 @@ export default function Home() {
       if (headingSubscription) headingSubscription.remove();
     };
   }, [isPlayable]);
+
+  useEffect(() => {
+    const countdown = setInterval(() => {
+      setTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdown);
+          router.push('/chess');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(countdown);
+  }, []);
 
   if (errorMsg) {
     return (
@@ -442,9 +483,9 @@ export default function Home() {
     <SafeAreaView className="h-screen w-screen bg-violet-700/40">
       <View className="flex h-screen w-screen flex-col items-center justify-center gap-4 p-5">
         <Text className="mb-2.5 font-bricolage-bold text-3xl text-violet-600">Chess Quest</Text>
-        {/* <Text className="font-inter-bold text-lg">Players Connected: {playersConnected}/2</Text> */}
+        <Text className="font-inter-bold text-lg">Time Remaining: {timer}s</Text>
         <View className="flex w-full items-center justify-center gap-2">
-          <Link href="/chess">Chess</Link>
+          {/* <Link href="/chess" className='font-bricolage-bold text-violet-500/90 bg-violet-200 p-1 rounded-lg px-4 text-center'>Chess</Link> */}
 
           <View className="flex flex-row gap-2">
             <View className="flex flex-row items-center justify-center gap-2 rounded-lg bg-violet-200 p-2">
@@ -541,13 +582,13 @@ export default function Home() {
         )}
 
         {isOnGrass === true && (
-          <Text className="mt-4 font-bricolage-bold text-2xl text-green-600">
+          <Text className="mt-4 font-bricolage-bold text-2xl text-green-700">
             You are on grass!
           </Text>
         )}
 
         {isOnGrass === null && (
-          <Text className="mt-4 font-bricolage-bold text-2xl text-yellow-600">
+          <Text className="mt-4 font-bricolage-bold text-2xl text-yellow-700">
             Checking land type...
           </Text>
         )}
