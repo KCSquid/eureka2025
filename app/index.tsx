@@ -1,23 +1,32 @@
 import * as Location from 'expo-location';
 
 import { useEffect, useState, useRef } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, SafeAreaView } from 'react-native';
 import { MapPin, Target } from 'lucide-react-native';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import {
+  faChessQueen,
+  faChessRook,
+  faChessBishop,
+  faChessKnight,
+  faChessPawn,
+  faQuestion,
+} from '@fortawesome/free-solid-svg-icons';
 
 type ChessPiece = {
   name: string;
-  symbol: string;
+  icon: any;
   color: string;
 };
 
 const chessPieces: ChessPiece[] = [
-  { name: 'Queen', symbol: '♛', color: 'text-gray-800' },
-  { name: 'Rook', symbol: '♜', color: 'text-gray-800' },
-  { name: 'Rook', symbol: '♜', color: 'text-gray-800' },
-  { name: 'Bishop', symbol: '♝', color: 'text-gray-800' },
-  { name: 'Bishop', symbol: '♝', color: 'text-gray-800' },
-  { name: 'Knight', symbol: '♞', color: 'text-gray-800' },
-  { name: 'Knight', symbol: '♞', color: 'text-gray-800' },
+  { name: 'Queen', icon: faChessQueen, color: 'text-gray-800' },
+  { name: 'Rook', icon: faChessRook, color: 'text-gray-800' },
+  { name: 'Rook', icon: faChessRook, color: 'text-gray-800' },
+  { name: 'Bishop', icon: faChessBishop, color: 'text-gray-800' },
+  { name: 'Bishop', icon: faChessBishop, color: 'text-gray-800' },
+  { name: 'Knight', icon: faChessKnight, color: 'text-gray-800' },
+  { name: 'Knight', icon: faChessKnight, color: 'text-gray-800' },
 ];
 
 export default function Home() {
@@ -280,7 +289,7 @@ export default function Home() {
 
                   const nextPiece = points[nearestPointIndex].piece;
                   setDirectionToPoint(
-                    `${nextPiece.symbol} ${directionArrow} ${direction} (${minDistance.toFixed(1)}m)\nTurn ${turnDegrees}° to find the ${nextPiece.name}`
+                    `${directionArrow} ${direction} (${minDistance.toFixed(1)}m)\nTurn ${turnDegrees}° to find the ${nextPiece.name}`
                   );
                 } else {
                   // Fallback if no heading is available
@@ -288,7 +297,7 @@ export default function Home() {
 
                   const nextPiece = points[nearestPointIndex].piece;
                   setDirectionToPoint(
-                    `${nextPiece.symbol} Head ${direction} for ${minDistance.toFixed(1)}m\nFind the ${nextPiece.name}`
+                    `Head ${direction} for ${minDistance.toFixed(1)}m\nFind the ${nextPiece.name}`
                   );
                 }
               }
@@ -360,7 +369,7 @@ export default function Home() {
 
                 const nextPiece = points[nearestPointIndex].piece;
                 setDirectionToPoint(
-                  `${nextPiece.symbol} Head ${direction} for ${minDistance.toFixed(1)}m\nFind the ${nextPiece.name}`
+                  `${nextPiece.icon} Head ${direction} for ${minDistance.toFixed(1)}m\nFind the ${nextPiece.name}`
                 );
               }
             }
@@ -378,7 +387,7 @@ export default function Home() {
   if (errorMsg) {
     return (
       <View className="p-5">
-        <Text className="font-bricolage-bold mb-4 text-center text-lg text-red-600">
+        <Text className="mb-4 text-center font-bricolage-bold text-lg text-red-600">
           {errorMsg}
         </Text>
       </View>
@@ -386,106 +395,124 @@ export default function Home() {
   }
 
   return (
-    <View className="flex flex-col items-center justify-center gap-4 p-5">
-      <View className="flex w-full items-center justify-center gap-2">
-        <Text className="font-bricolage-bold mb-2.5 text-3xl text-violet-700">Chess Quest</Text>
+    <SafeAreaView className="h-screen w-screen bg-violet-700/40">
+      <View className="flex h-screen w-screen flex-col items-center justify-center gap-4 p-5">
+        <View className="flex w-full items-center justify-center gap-2">
+          <Text className="mb-2.5 font-bricolage-bold text-3xl text-violet-600">Chess Quest</Text>
 
-        <View className="flex flex-row gap-2">
-          <View className="flex flex-row items-center justify-center gap-2 rounded-sm bg-violet-200 p-2">
-            <MapPin color={'#000'} />
-            <Text className="font-inter-bold">
-              {location
-                ? `(${location.latitude.toFixed(2)}, ${location.longitude.toFixed(2)})`
-                : 'Fetching location...'}
-            </Text>
-          </View>
-          <View className="flex flex-row items-center justify-center gap-2 rounded-sm bg-violet-200 p-2">
-            <Target color={'#000'} />
-            {accuracy && (
+          <View className="flex flex-row gap-2">
+            <View className="flex flex-row items-center justify-center gap-2 rounded-lg bg-violet-200 p-2">
+              <MapPin color="#000" />
               <Text className="font-inter-bold">
-                ±{accuracy.toFixed(1)}m{' '}
-                {accuracy < 5 ? '(Good)' : accuracy < 10 ? '(Fair)' : '(Poor)'}
+                {location
+                  ? `(${location.latitude.toFixed(2)}, ${location.longitude.toFixed(2)})`
+                  : 'Fetching location...'}
               </Text>
-            )}
+            </View>
+            <View className="flex flex-row items-center justify-center gap-2 rounded-lg bg-violet-200 p-2">
+              <Target color="#000" />
+              {accuracy && (
+                <Text className="font-inter-bold">
+                  ±{accuracy.toFixed(1)}m{' '}
+                  {accuracy < 5 ? '(Good)' : accuracy < 10 ? '(Fair)' : '(Poor)'}
+                </Text>
+              )}
+            </View>
           </View>
         </View>
-      </View>
 
-      <View className="mb-4 rounded-lg bg-gray-100 p-3">
-        <Text className="font-bricolage-bold mb-2 text-lg text-green-700">
-          Your Collection: {collectedPieces.length}/7
-        </Text>
-        <View className="flex-row flex-wrap justify-center">
-          {collectedPieces.map((piece, idx) => (
-            <Text key={idx} className="font-bricolage m-1 text-4xl">
-              {piece.symbol}
-            </Text>
-          ))}
-          {Array(7 - collectedPieces.length)
-            .fill(0)
-            .map((_, idx) => (
-              <Text key={idx} className="font-bricolage m-1 text-4xl text-gray-300">
-                ?
-              </Text>
+        <View className="mb-4 rounded-lg bg-violet-200 p-3">
+          <Text className="mb-2 font-bricolage-bold text-lg text-violet-500">
+            Your Collection: {collectedPieces.length}/7
+          </Text>
+          <View className="flex-row flex-wrap justify-center">
+            {collectedPieces.map((piece, idx) => (
+              <View key={idx} className="m-1">
+                <FontAwesomeIcon icon={piece.icon} size={32} color="#000" />
+              </View>
             ))}
+            {Array(7 - collectedPieces.length)
+              .fill(0)
+              .map((_, idx) => (
+                <View key={idx} className="m-1">
+                  <FontAwesomeIcon icon={faQuestion} size={32} color="#8b5cf6" />
+                </View>
+              ))}
+          </View>
         </View>
-      </View>
 
-      {heading !== null && (
-        <Text className="font-inter mb-2.5 text-base">
-          Heading: {Math.round(heading)}° {getCardinalDirection(heading)}
-        </Text>
-      )}
-
-      {collectingPoint && (
-        <View className="relative my-4 h-10 w-full overflow-hidden rounded-3xl bg-gray-300">
-          <View
-            className="h-full rounded-3xl bg-green-500"
-            style={{ width: `${collectingProgress}%` }}
-          />
-          <Text className="font-inter-bold absolute inset-0 py-2.5 text-center text-base text-black">
-            Stay still! Collecting{' '}
-            {edgePoints[currentCollectingPointIndex.current || 0]?.piece.name || 'piece'}...{' '}
-            {Math.round(collectingProgress)}%
-          </Text>
-        </View>
-      )}
-
-      {directionToPoint && !collectingPoint && (
-        <View className="my-4 rounded-lg bg-blue-100 p-3">
-          <Text className="font-bricolage-bold text-2xl text-blue-700">
-            {directionToPoint.split('\n')[0]}
-          </Text>
-          <Text className="font-inter mt-1 text-lg text-blue-600">
-            {directionToPoint.split('\n')[1]}
-          </Text>
-        </View>
-      )}
-
-      {atPointMessage && (
-        <Text className="font-bricolage-bold my-4 text-2xl text-green-700">{atPointMessage}</Text>
-      )}
-
-      <Text className="font-bricolage-bold mb-1 mt-4 text-lg">
-        Remaining Pieces: {edgePoints.length}
-      </Text>
-
-      <View className="flex flex-row flex-wrap items-center justify-center">
-        {edgePoints.length > 0 ? (
-          edgePoints.map((point, index) => (
-            <Text
-              key={index}
-              className={`font-inter mx-10 flex basis-20 items-center justify-center rounded-sm p-1 py-3 text-center text-4xl ${closestPointIndex === index ? ' bg-blue-200 ' : ''}`}>
-              {point.piece.symbol}
-            </Text>
-          ))
-        ) : (
-          <Text className="font-bricolage-bold my-4 text-2xl text-green-700">
-            All pieces collected! Your chess set is complete!
+        {heading !== null && (
+          <Text className="mb-2.5 font-inter text-base">
+            Heading: {Math.round(heading)}° {getCardinalDirection(heading)}
           </Text>
         )}
+
+        {collectingPoint && (
+          <View className="relative my-4 h-10 w-full overflow-hidden rounded-3xl bg-gray-300">
+            <View
+              className="h-full rounded-3xl bg-green-500"
+              style={{ width: `${collectingProgress}%` }}
+            />
+            <Text className="absolute inset-0 py-2.5 text-center font-inter-bold text-base text-black">
+              Stay still! Collecting{' '}
+              {edgePoints[currentCollectingPointIndex.current || 0]?.piece.name || 'piece'}...{' '}
+              {Math.round(collectingProgress)}%
+            </Text>
+          </View>
+        )}
+
+        {directionToPoint && !collectingPoint && (
+          <View className="my-4 flex flex-col gap-2 rounded-lg bg-violet-200 p-4">
+            <Text className="px-2 font-bricolage-bold text-2xl text-violet-700">
+              {directionToPoint.split('\n')[0]}
+            </Text>
+            <View className="flex flex-row items-center gap-2">
+              <Text className="px-2 font-inter text-lg text-violet-600">
+                {directionToPoint.split('\n')[1]}
+              </Text>
+              {closestPointIndex !== null && edgePoints[closestPointIndex] && (
+                <FontAwesomeIcon
+                  icon={edgePoints[closestPointIndex].piece.icon}
+                  size={18}
+                  color="#7c3aed"
+                  style={{ marginRight: 8 }}
+                />
+              )}
+            </View>
+          </View>
+        )}
+
+        {atPointMessage && (
+          <Text className="my-4 font-bricolage-bold text-2xl text-violet-600">
+            {atPointMessage}
+          </Text>
+        )}
+
+        <Text className="mb-1 mt-4 font-bricolage-bold text-lg">
+          Remaining Pieces: {edgePoints.length}
+        </Text>
+
+        <View className="flex flex-row flex-wrap items-center justify-center">
+          {edgePoints.length > 0 ? (
+            edgePoints.map((point, index) => (
+              <View
+                key={index}
+                className="mx-10 flex basis-20 items-center justify-center rounded-lg p-1 py-3 font-inter">
+                <FontAwesomeIcon
+                  icon={point.piece.icon}
+                  size={32}
+                  color={closestPointIndex === index ? '#7c3aed' : '#000'}
+                />
+              </View>
+            ))
+          ) : (
+            <Text className="my-4 font-bricolage-bold text-2xl text-violet-600">
+              All pieces collected! Your chess set is complete!
+            </Text>
+          )}
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
