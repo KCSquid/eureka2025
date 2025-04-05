@@ -1,6 +1,6 @@
 import { Chess, Square } from 'chess.js';
 import { Link } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Button, ScrollView, Dimensions, SafeAreaView } from 'react-native';
 
 import ChessBoard from '../components/chessboard';
@@ -12,12 +12,92 @@ export default function ChessGame() {
   const [currentTurn, setCurrentTurn] = useState<'white' | 'black'>('white');
   const [gameStatus, setGameStatus] = useState<string>('');
   const [gameResult, setGameResult] = useState<string | null>(null);
+  const [gameId] = useState(`game-${Date.now()}`); // Unique game ID
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const boardSize = Math.min(Dimensions.get('window').width - 32, 350);
 
   useEffect(() => {
     checkGameStatus();
+
+    // Start polling for game updates
+    startPolling();
+
+    return () => {
+      // Cleanup polling on component unmount
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    checkGameStatus();
   }, [fen]);
+
+  const startPolling = () => {
+    // Clear any existing interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    // Set up new polling interval
+    pollingIntervalRef.current = setInterval(fetchGameUpdates, 500);
+  };
+
+  const fetchGameUpdates = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/GetInfo`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Only update if the server has a newer state
+        if (data.fen && data.fen !== chess.fen()) {
+          // Load the new position
+          chess.load(data.fen);
+
+          // Update state
+          setFen(data.fen);
+          setHistory(chess.history());
+          setCurrentTurn(chess.turn() === 'w' ? 'white' : 'black');
+          checkGameStatus();
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching game updates:', error);
+    }
+  };
+
+  const sendMoveToServer = async (from: Square, to: Square, newFen: string) => {
+    try {
+      const response = await fetch('http://localhost:3000/api/SendInfo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          gameId,
+          from,
+          to,
+          fen: newFen,
+          history: chess.history(),
+          turn: chess.turn(),
+        }),
+      });
+
+      if (!response.ok) {
+        console.log('Failed to send move to server');
+      }
+    } catch (error) {
+      console.error('Error sending move to server:', error);
+    }
+  };
 
   const handleMove = (from: Square, to: Square) => {
     try {
@@ -28,10 +108,14 @@ export default function ChessGame() {
       });
 
       if (move) {
-        setFen(chess.fen());
+        const newFen = chess.fen();
+        setFen(newFen);
         setHistory(chess.history());
         setCurrentTurn(chess.turn() === 'w' ? 'white' : 'black');
         checkGameStatus();
+
+        // Send move to server
+        sendMoveToServer(from, to, newFen);
       }
     } catch (e) {
       console.log('Invalid move', e);
@@ -75,20 +159,55 @@ export default function ChessGame() {
 
   const resetGame = () => {
     chess.reset();
-    setFen(chess.fen());
+    const newFen = chess.fen();
+    setFen(newFen);
     setHistory([]);
     setCurrentTurn('white');
     setGameStatus("white's turn");
     setGameResult(null);
+
+    // Send reset to server
+    try {
+      fetch('https://your-api-endpoint.com/reset', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          gameId,
+          fen: newFen,
+        }),
+      });
+    } catch (error) {
+      console.error('Error sending game reset to server:', error);
+    }
   };
 
   const undoMove = () => {
     const move = chess.undo();
     if (move) {
-      setFen(chess.fen());
+      const newFen = chess.fen();
+      setFen(newFen);
       setHistory(chess.history());
       setCurrentTurn(chess.turn() === 'w' ? 'white' : 'black');
       checkGameStatus();
+
+      // Send undo to server
+      try {
+        fetch('https://your-api-endpoint.com/undo', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            gameId,
+            fen: newFen,
+            history: chess.history(),
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending undo to server:', error);
+      }
     }
   };
 

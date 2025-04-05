@@ -104,7 +104,7 @@ export default function ChessBoard({ fen, onMove, flipped = false, size = 350 }:
                         color: cell.color === 'w' ? '#ffffff' : '#000000',
                       },
                     ]}>
-                    {PIECES[cell.type.toUpperCase() + (cell.color === 'w' ? '' : cell.color)]}
+                    {PIECES[cell.color === 'w' ? cell.type.toUpperCase() : cell.type.toLowerCase()]}
                   </Text>
                 )}
               </TouchableOpacity>
